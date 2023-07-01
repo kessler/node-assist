@@ -16,7 +16,12 @@ async function main() {
     .name('kes')
     .description('kessler AI assistant (@kessler/assist)')
     .version(version)
-    .action(genericQueryCommand)
+    .action(genericQueryCommandInteractive)
+
+  program
+    .command('query [prompt]').alias('q')
+    .description('send a query to chatgpt. this command is also accessible by running the cli tool (just run kes) for an interactive experience')
+    .action(genericQueryCommandOnce)
 
   program
     .command('code [prompt]').alias('c')
@@ -38,7 +43,7 @@ async function main() {
 
 main()
 
-async function genericQueryCommand(options, command) {
+async function genericQueryCommandInteractive(options, command) {
   checkInitialized()
 
   let context = []
@@ -53,13 +58,26 @@ async function genericQueryCommand(options, command) {
   while (content !== '') {
     const response = await openai.chat(...context)
 
-    console.log(response.data.choices.map(choice => choice.message.content).join('\n'))
+    console.log(openai.toText(response))
 
     content = await prompt('[chatgpt]:')
     if (content !== '') {
       context.push({ role: 'user', content })
     }
   }
+}
+
+async function genericQueryCommandOnce(content, options, command) {
+  checkInitialized()
+  
+  if (!content) {
+    console.log('no prompt provided')
+    return
+  }
+
+  const openai = createApi(config.openai)
+  const response = await openai.chat({ role: 'user', content })
+  console.log(openai.toText(response))
 }
 
 async function codeQueryCommand(str, options, command) {
@@ -86,7 +104,7 @@ async function codeQueryCommand(str, options, command) {
     content: `do not include any introduction in your response. write only code: ${userCode}. do not include any introduction in your response. write only code`
   })
 
-  console.log(response.data.choices.map(choice => choice.message.content).join('\n'))
+  console.log(openai.toText(response))
 }
 
 async function openPromptWithEditor(message) {
