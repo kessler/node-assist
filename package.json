@@ -1,12 +1,14 @@
 {
   "name": "@kessler/assist",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Personal AI assistant CLI tool",
   "main": "index.mjs",
   "scripts": {
     "test": "npx ava"
   },
-  "publishConfig": { "registry": "https://npm.pkg.github.com/kessler" },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/kessler"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kessler/node-assist.git"
