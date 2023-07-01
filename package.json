@@ -12,7 +12,7 @@
     "url": "git+https://github.com/kessler/node-assist.git"
   },
   "bin": {
-    "kes": "index.js"
+    "kes": "./index.mjs"
   },
   "author": "Yaniv Kessler",
   "license": "Apache-2.0",
