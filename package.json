@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx ava"
   },
+  "publishConfig": { "registry": "https://npm.pkg.github.com/kessler" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kessler/node-assist.git"
