@@ -16,7 +16,12 @@ async function main() {
     .name('kes')
     .description('kessler AI assistant (@kessler/assist)')
     .version(version)
-    .action(genericAIPrompt)
+    .action(genericQueryCommand)
+
+  program
+    .command('code [prompt]').alias('c')
+    .description('send a code prompt')
+    .action(codeQueryCommand)
 
   program
     .command('init')
@@ -24,37 +29,16 @@ async function main() {
     .action(init)
 
   program
-    .command('code [prompt]').alias('c')
-    .description('send a code prompt')
-    .action(codeAIPrompt)
-
-  //program.command('config [operation]', )
+    .command('config [operation]')
+    .description('view and edit the local configuration, using get, set and list')
+    .action(configCommand)
 
   program.parse()
 }
 
 main()
 
-async function init() {
-  const fullConfigPath = path.join(homedir(), '.config', 'kessler_assist')
-  try {
-    await fs.access(fullConfigPath)
-  } catch (e) {
-    if (e.code !== 'ENOENT') {
-      throw e
-    }
-  }
-
-  const key = await prompt('openAI api key:')
-  if (key === '') {
-    console.log('cancelling...')
-    return
-  }
-
-  await fs.writeFile(fullConfigPath, JSON.stringify({ openai: { key } }))
-}
-
-async function genericAIPrompt(options, command) {
+async function genericQueryCommand(options, command) {
   checkInitialized()
 
   let context = []
@@ -78,7 +62,7 @@ async function genericAIPrompt(options, command) {
   }
 }
 
-async function codeAIPrompt(str, options, command) {
+async function codeQueryCommand(str, options, command) {
   checkInitialized()
 
   let userCode = str
@@ -113,6 +97,25 @@ async function openPromptWithEditor(message) {
   }
 
   return result
+}
+
+async function init() {
+  const fullConfigPath = path.join(homedir(), '.config', 'kessler_assist')
+  try {
+    await fs.access(fullConfigPath)
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      throw e
+    }
+  }
+
+  const key = await prompt('openAI api key:')
+  if (key === '') {
+    console.log('cancelling...')
+    return
+  }
+
+  await fs.writeFile(fullConfigPath, JSON.stringify({ openai: { key } }))
 }
 
 function checkInitialized() {
