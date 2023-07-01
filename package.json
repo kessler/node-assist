@@ -1,0 +1,28 @@
+{
+  "name": "@kessler/assist",
+  "version": "1.0.0",
+  "description": "A Personal AI assistant CLI tool",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "npx ava"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kessler/node-assist.git"
+  },
+  "bin": {
+    "kes": "index.js"
+  },
+  "author": "Yaniv Kessler",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/kessler/node-assist/issues"
+  },
+  "homepage": "https://github.com/kessler/node-assist#readme",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "inquirer": "^9.2.7",
+    "openai": "^3.3.0",
+    "rc": "^1.2.8"
+  }
+}
