@@ -9,7 +9,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 
 async function main() {
-  const { version } = JSON.parse(await fs.readFile('./package.json'))
+  const { version } = JSON.parse(await fs.readFile(path.join(new URL('.', import.meta.url).pathname, './package.json')))
   const program = new Command()
 
   program
@@ -48,6 +48,8 @@ async function genericQueryCommandInteractive(options, command) {
 
   let context = []
   
+  console.log('send an empty string (hit enter) to exit')
+
   let content = await prompt('[chatgpt]:')
   if (content !== '') {
     context.push({ role: 'user', content })
