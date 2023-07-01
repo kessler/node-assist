@@ -118,6 +118,10 @@ async function init() {
   await fs.writeFile(fullConfigPath, JSON.stringify({ openai: { key } }))
 }
 
+function configCommand() {
+  console.log('not implemented yet')
+}
+
 function checkInitialized() {
 
   if (!config.openai.key) {
