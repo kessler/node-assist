@@ -59,8 +59,10 @@ async function genericQueryCommandInteractive(options, command) {
 
   while (content !== '') {
     const response = await openai.chat(...context)
-
-    console.log(openai.toText(response))
+    const responseText = openai.toText(response)
+    
+    context.push({ role: 'assistant', content: responseText })
+    console.log(responseText)
 
     content = await prompt('[chatgpt]:')
     if (content !== '') {
