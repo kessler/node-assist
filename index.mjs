@@ -92,7 +92,7 @@ async function codeQueryCommand(str, options, command) {
   if (!userCode) {
     userCode = await openPromptWithEditor('type a code related query')
 
-    if (userCode === '') {
+    if (!userCode) {
       console.log('nothing to do, exiting...')
       return
     }
@@ -114,7 +114,7 @@ async function codeQueryCommand(str, options, command) {
 async function openPromptWithEditor(message) {
   let result = await prompt(`${message} (hit enter to open the editor):`)
 
-  if (result === '') {
+  if (!result) {
     result = await prompt(`${message}:`, 'editor')
   }
 
