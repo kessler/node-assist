@@ -4,7 +4,7 @@ personal AI assistant
 
 
 ### tasks
-
+- code query need to type enter twice to get to editor... 
 - implement config commands
 - implement history
 

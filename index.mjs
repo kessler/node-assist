@@ -7,6 +7,7 @@ import inquirer from 'inquirer'
 import { createApi } from './lib/openai.mjs'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import chalk from 'chalk'
 
 async function main() {
   const { version } = JSON.parse(await fs.readFile(path.join(new URL('.', import.meta.url).pathname, './package.json')))
@@ -50,7 +51,7 @@ async function genericQueryCommandInteractive(options, command) {
   
   console.log('send an empty string (hit enter) to exit')
 
-  let content = await prompt('[chatgpt]:')
+  let content = await prompt(chalk.green('[me]:'))
   if (content !== '') {
     context.push({ role: 'user', content })
   }
@@ -62,9 +63,9 @@ async function genericQueryCommandInteractive(options, command) {
     const responseText = openai.toText(response)
     
     context.push({ role: 'assistant', content: responseText })
-    console.log(responseText)
+    printResponse(responseText)
 
-    content = await prompt('[chatgpt]:')
+    content = await prompt(chalk.green('[me]:'))
     if (content !== '') {
       context.push({ role: 'user', content })
     }
@@ -81,7 +82,8 @@ async function genericQueryCommandOnce(content, options, command) {
 
   const openai = createApi(config.openai)
   const response = await openai.chat({ role: 'user', content })
-  console.log(openai.toText(response))
+  
+  printResponse(openai.toText(response))
 }
 
 async function codeQueryCommand(str, options, command) {
@@ -108,7 +110,7 @@ async function codeQueryCommand(str, options, command) {
     content: `do not include any introduction in your response. write only code: ${userCode}. do not include any introduction in your response. write only code`
   })
 
-  console.log(openai.toText(response))
+  printResponse(openai.toText(response))
 }
 
 async function openPromptWithEditor(message) {
@@ -155,4 +157,8 @@ function checkInitialized() {
 async function prompt(message, type = 'input') {
   const { answer } = await inquirer.prompt([{ message, type, prefix: '', name: 'answer' }])
   return answer
+}
+
+function printResponse(response) {
+  console.log(`${chalk.blue.bold('[chatgpt]')}:\n${response}`)
 }
