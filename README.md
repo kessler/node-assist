@@ -2,6 +2,18 @@
 
 personal AI assistant
 
+## install
+
+```
+  $ npm install -g @kessler/assist
+
+  $ kes init
+```
+
+## Interactive mode
+
+The simplest usage, is like a session in chatgpt
+
 
 ### tasks
 - code query need to type enter twice to get to editor... 

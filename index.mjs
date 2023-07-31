@@ -8,8 +8,15 @@ import { createApi } from './lib/openai.mjs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import chalk from 'chalk'
+import { installMetaCommands } from './lib/metaCommands.mjs'
 
 async function main() {
+
+  installMetaCommands({
+    'k': () => console.log('k'),
+    'command+x': () => console.log('command+x')
+  })
+  
   const { version } = JSON.parse(await fs.readFile(path.join(new URL('.', import.meta.url).pathname, './package.json')))
   const program = new Command()
 
