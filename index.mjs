@@ -2,11 +2,10 @@
 
 import { Command } from 'commander'
 import fs from 'node:fs/promises'
-import config from './lib/config.mjs'
+import path from 'node:path'
+import config, { configFileExists, saveConfig } from './lib/config.mjs'
 import inquirer from 'inquirer'
 import { createApi } from './lib/openai.mjs'
-import { homedir } from 'node:os'
-import path from 'node:path'
 import chalk from 'chalk'
 
 async function main() {
@@ -22,7 +21,12 @@ async function main() {
   program
     .command('query [prompt]').alias('q')
     .description('send a query to chatgpt. this command is also accessible by running the cli tool (just run kes) for an interactive experience')
-    .action(wrapCommand(genericQueryCommandOnce))
+    .action(wrapCommand(genericQueryCommandOnce, { respond: printBareResponse }))
+
+  program
+    .command('actor [subcommand]')
+    .description('add, remove or list')
+    .action(wrapCommand(genericQueryCommandOnce, { respond: printBareResponse }))
 
   program
     .command('code [prompt]').alias('c')
@@ -32,7 +36,7 @@ async function main() {
   program
     .command('init')
     .description('run once to init the cli')
-    .action(wrapCommand(init))
+    .action(wrapCommand(init, { checkInit: () => {} }))
 
   program
     .command('config [operation]')
@@ -44,14 +48,14 @@ async function main() {
 
 main()
 
-function wrapCommand(commandFunction, { respond = printResponse } = {}) {
+function wrapCommand(commandFunction, { respond = printResponse, checkInit = checkInitialized } = {}) {
   return (param, options, command) => {
     if (command === undefined) {
       command = options
       options = param
     }
 
-    checkInitialized()
+    checkInit()
     const openai = createApi(config.openai)
     return commandFunction(param, options, command, { openai, respond, prompt: showPrompt })
   }
@@ -85,7 +89,11 @@ async function genericQueryCommandInteractive(param, options, command, { openai,
 async function genericQueryCommandOnce(content, options, command, { openai, respond, prompt }) {
   
   if (!content) {
-    console.log('no prompt provided')
+    content = await prompt('editor mode', { type: 'editor' })
+  }
+
+  if (!content) {
+    console.error('no content provided, aborting')
     return
   }
 
@@ -119,19 +127,7 @@ async function codeQueryCommand(str, options, command, { openai, respond, prompt
 }
 
 async function init(param, options, command, { respond, prompt }) {
-  const fullConfigPath = path.join(homedir(), '.config', 'kessler_assist')
-  let isNew = false
-  try {
-    await fs.access(fullConfigPath)
-  } catch (e) {
-    if (e.code === 'ENOENT') {
-      isNew = true
-    } else {
-      throw e
-    }
-  }
-
-  if (!isNew) {
+  if (await configFileExists() && config.openai.key) {
     const response = await prompt('already initialized, do you want to override?', { defaultValue: 'no' })
     if (response !== 'yes') {
       if (response.toLowerCase() !== 'no') {
@@ -147,7 +143,8 @@ async function init(param, options, command, { respond, prompt }) {
     return
   }
 
-  await fs.writeFile(fullConfigPath, JSON.stringify({ openai: { key } }))
+  config.openai.key = key
+  await saveConfig()
 }
 
 function configCommand() {
@@ -157,8 +154,8 @@ function configCommand() {
 function checkInitialized() {
 
   if (!config.openai.key) {
-    console.log('run init command first')
-    throw new Error('not initialized')
+    console.log('Not initialized, run \'kes init\' command first')
+    process.exit()
   }
 }
 
