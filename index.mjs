@@ -117,7 +117,7 @@ async function openPromptWithEditor(message) {
   let result = await prompt(`${message} (hit enter to open the editor):`)
 
   if (!result) {
-    result = await prompt(`${message}:`, 'editor')
+    result = await prompt(`editor mode`, { type: 'editor' })
   }
 
   return result
@@ -125,16 +125,29 @@ async function openPromptWithEditor(message) {
 
 async function init() {
   const fullConfigPath = path.join(homedir(), '.config', 'kessler_assist')
+  let isNew = false
   try {
     await fs.access(fullConfigPath)
   } catch (e) {
-    if (e.code !== 'ENOENT') {
+    if (e.code === 'ENOENT') {
+      isNew = true
+    } else {
       throw e
     }
   }
 
+  if (!isNew) {
+    const response = await prompt('already initialized, do you want to override?', { defaultValue: 'no' })
+    if (response !== 'yes') {
+      if (response.toLowerCase() !== 'no') {
+        console.warn(`invalid answer, use "yes" or "no", aborting for now.`)
+      }
+      return
+    }
+  }
+
   const key = await prompt('openAI api key:')
-  if (key === '') {
+  if (!key) {
     console.log('cancelling...')
     return
   }
@@ -154,8 +167,8 @@ function checkInitialized() {
   }
 }
 
-async function prompt(message, type = 'input') {
-  const { answer } = await inquirer.prompt([{ message, type, prefix: '', name: 'answer' }])
+async function prompt(message, { type = 'input', defaultValue } = {}) {
+  const { answer } = await inquirer.prompt([{ message, type, prefix: '', name: 'answer', default: defaultValue }])
   return answer
 }
 
