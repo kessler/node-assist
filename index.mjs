@@ -16,6 +16,7 @@ async function main() {
     .name('kes')
     .description('kessler AI assistant (@kessler/assist)')
     .version(version)
+    .option('-a, --actor [actor]', 'send a role:system message with a predefined prompt')
     .action(wrapCommand(genericQueryCommandInteractive))
 
   program
@@ -26,7 +27,7 @@ async function main() {
   program
     .command('actor [subcommand]')
     .description('add, remove or list')
-    .action(wrapCommand(genericQueryCommandOnce, { respond: printBareResponse }))
+    .action(wrapCommand(actorCommand, { respond: printBareResponse }))
 
   program
     .command('code [prompt]').alias('c')
@@ -57,15 +58,20 @@ function wrapCommand(commandFunction, { respond = printResponse, checkInit = che
 
     checkInit()
     const openai = createApi(config.openai)
-    return commandFunction(param, options, command, { openai, respond, prompt: showPrompt })
+    return commandFunction(param, options, command, { openai, respond, prompt: showPrompt, getActor })
   }
 }
 
-async function genericQueryCommandInteractive(param, options, command, { openai, respond, prompt }) {
-  
+async function genericQueryCommandInteractive(param, options, command, { openai, respond, prompt, getActor }) {
+
   let context = []
   
   console.log('send an empty string (hit enter) to exit')
+
+  const actor = await getActor(options)
+  if (actor) {
+    context.push({ role: 'system', content: actor.prompt })
+  }
 
   let content = await prompt(chalk.green('[me]:'))
   if (content !== '') {
@@ -126,6 +132,66 @@ async function codeQueryCommand(str, options, command, { openai, respond, prompt
   respond(openai.toText(response))
 }
 
+async function actorCommand(subcommand, options, command, { prompt }) {
+  if (subcommand === 'list') {
+    console.log(Object.keys(config.actors).join('\n-'))
+    return
+  }
+
+
+  if (subcommand === 'add') {
+    const name = await prompt(chalk.green('actor name:'))
+    const actorPrompt = await prompt(chalk.green('actor prompt:'))  
+    config.actors[name] = { prompt: actorPrompt, name }
+
+    await saveConfig()
+    return
+  }
+
+  if (subcommand === 'remove') {
+    const choices = ['- cancel', ...Object.keys(config.actors)]
+    const name = await prompt(chalk.green('Select actor to remove:'), { type: 'list', choices })
+    if (name === '- cancel') return
+      
+    const areYouSure = await prompt(chalk.red(`are you sure you want to remove "${name}"?`), { defaultValue: 'no' })
+
+    if (areYouSure === 'yes') {
+      delete config.actors[name]
+      await saveConfig()
+    }
+    return
+  }
+
+  throw new Error('no such sub command for command actor')
+}
+
+async function getActor(options) {
+  if (!options.hasOwnProperty('actor')) {
+    return
+  }
+
+  let actor = options.actor
+
+  if (actor === true) {
+    actor = await showPrompt(chalk.green('actor name:'))
+  }
+
+  if (!actor) {
+    console.log(chalk.red(`cannot use empty actor name`))
+    process.exit()
+  }
+
+  const actorConfig = config.actors[actor]
+  if (!actorConfig) {
+    console.log(chalk.red(`no such actor "${actor}"" configured`))
+    process.exit()
+  }
+
+  console.log(chalk.gray(`acting as ${actor}`))
+
+  return actorConfig
+}
+
 async function init(param, options, command, { respond, prompt }) {
   if (await configFileExists() && config.openai.key) {
     const response = await prompt('already initialized, do you want to override?', { defaultValue: 'no' })
@@ -159,8 +225,8 @@ function checkInitialized() {
   }
 }
 
-async function showPrompt(message, { type = 'input', defaultValue } = {}) {
-  const { answer } = await inquirer.prompt([{ message, type, prefix: '', name: 'answer', default: defaultValue }])
+async function showPrompt(message, { type = 'input', defaultValue, choices = [] } = {}) {
+  const { answer } = await inquirer.prompt([{ message, type, prefix: '', name: 'answer', default: defaultValue, choices }])
   return answer
 }
 
