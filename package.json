@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx ava"
   },
+  "license": "Apache-2",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/kessler"
   },
