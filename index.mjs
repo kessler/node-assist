@@ -17,6 +17,7 @@ async function main() {
     .description('kessler AI assistant (@kessler/assist)')
     .version(version)
     .option('-a, --actor [actor]', 'send a role:system message with a predefined prompt')
+    .option('-p, --preprompt <prePrompt>', 'prepend some text to the beginning of the conversation, this is useful with kes query where content is coming from stdin. When combined with --actor, preprompt will immediately follow the role system message (actor prompt)')
     .action(wrapCommand(genericQueryCommandInteractive))
 
   program
@@ -50,7 +51,7 @@ async function main() {
 main()
 
 function wrapCommand(commandFunction, { respond = printResponse, checkInit = checkInitialized } = {}) {
-  return (param, options, command) => {
+  return async (param, options, command) => {
     if (command === undefined) {
       command = options
       options = param
@@ -58,20 +59,24 @@ function wrapCommand(commandFunction, { respond = printResponse, checkInit = che
 
     checkInit()
     const openai = createApi(config.openai)
-    return commandFunction(param, options, command, { openai, respond, prompt: showPrompt, getActor })
+    const context = []
+    const actor = await getActor(options)
+    if (actor) {
+      context.push({ role: 'system', content: actor.prompt })
+    }
+
+    const preprompt = options.preprompt
+    if (preprompt) {
+      context.push({ role: 'user', content: preprompt })
+    }
+
+    return commandFunction(param, options, command, { openai, respond, prompt: showPrompt, context })
   }
 }
 
-async function genericQueryCommandInteractive(param, options, command, { openai, respond, prompt, getActor }) {
-
-  let context = []
+async function genericQueryCommandInteractive(param, options, command, { openai, respond, prompt, context }) {
   
   console.log('send an empty string (hit enter) to exit')
-
-  const actor = await getActor(options)
-  if (actor) {
-    context.push({ role: 'system', content: actor.prompt })
-  }
 
   let content = await prompt(chalk.green('[me]:'))
   if (content !== '') {
@@ -92,23 +97,21 @@ async function genericQueryCommandInteractive(param, options, command, { openai,
   }
 }
 
-async function genericQueryCommandOnce(content, options, command, { openai, respond, prompt }) {
-  
+async function genericQueryCommandOnce(content, options, command, { openai, respond, prompt, context }) {
   if (!content) {
-    content = await prompt('editor mode', { type: 'editor' })
+    console.error('no content provided, waiting for content from stdin...')
+    
+    content = await readToEnd(process.stdin)
   }
 
-  if (!content) {
-    console.error('no content provided, aborting')
-    return
-  }
+  context.push({ role: 'user', content })
 
-  const response = await openai.chat({ role: 'user', content })
+  const response = await openai.chat(...context)
   
   respond(openai.toText(response))
 }
 
-async function codeQueryCommand(str, options, command, { openai, respond, prompt }) {
+async function codeQueryCommand(str, options, command, { openai, respond, prompt, context }) {
 
   let userCode = str
 
@@ -121,13 +124,13 @@ async function codeQueryCommand(str, options, command, { openai, respond, prompt
     }
   }
 
-  const response = await openai.chat({
+  const response = await openai.chat([...context, {
     role: 'system',
     content: 'when asked to write code, you will reply with code only in pure textual form'
   }, {
     role: 'user',
     content: `do not include any introduction in your response. write only code: ${userCode}. do not include any introduction in your response. write only code`
-  })
+  }])
 
   respond(openai.toText(response))
 }
@@ -137,7 +140,6 @@ async function actorCommand(subcommand, options, command, { prompt }) {
     console.log(Object.keys(config.actors).join('\n-'))
     return
   }
-
 
   if (subcommand === 'add') {
     const name = await prompt(chalk.green('actor name:'))
@@ -152,7 +154,7 @@ async function actorCommand(subcommand, options, command, { prompt }) {
     const choices = ['- cancel', ...Object.keys(config.actors)]
     const name = await prompt(chalk.green('Select actor to remove:'), { type: 'list', choices })
     if (name === '- cancel') return
-      
+
     const areYouSure = await prompt(chalk.red(`are you sure you want to remove "${name}"?`), { defaultValue: 'no' })
 
     if (areYouSure === 'yes') {
@@ -246,4 +248,13 @@ function printResponse(response) {
 
 function printBareResponse(response) {
   console.log(response)
+}
+
+async function readToEnd(stream) {
+  let data = ''
+  for await (const chunk of stream) {
+    data += chunk.toString('utf8')
+  }
+
+  return data
 }
