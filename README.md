@@ -1,6 +1,6 @@
 # @kessler/assist
 
-personal AI assistant
+Personal AI assistant / cli tool for accessing GPT.
 
 ## install
 
@@ -34,25 +34,51 @@ Specify query immediately in the cli:
   Hello!
 ```
 
-or open your default text editor for longer texts:
+or read from stdin:
 ```
-  $ kes query
-  editor mode Press <enter> to launch your preferred editor.
-  ...chatgpt response after closing the editor...
+  $ echo 'hello' | kes query
+  no content provided, waiting for content from stdin... (this is printed on stderr)
+  Hi
 ```
+
+## options
+These options apply to interactive and query commands
+
+### -a, --actor
+Set an actor for this session, See actor command
+
+### -p --preprompt
+Prepend some text to the session, especially useful when ingesting content from stdin.
 
 ## Actor commands
 Manage actors. Actors will be sent as ```{ "role": "system" }``` before queries or in interactive mode.
-Use them by specifying the `--actor=[actor]` in `kes` or `kes query`
+
+An interesting discussion on "role system" [here](https://community.openai.com/t/the-system-role-how-it-influences-the-chat-behavior/87353/2)
+
+Use actors by specifying the `--actor=[actor]` in `kes` or `kes query`
 
 ### add 
+
+```
+  $ kes actor add
+  actor name: darkgpt
+  actor prompt: ... prompt text here ...
+```
 ### remove
+```
+  $ kes actor remove
+  Select actor to remove: (Use arrow keys)
+❯ - cancel
+  prompt
+  dark
+```
+
 ### list
+list all actors, visibility is a little broken right now :-)
 
-
+## other stuff
 
 ### tasks
-- code query need to type enter twice to get to editor... 
 - implement config commands
 - implement history
 
