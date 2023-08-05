@@ -6,10 +6,8 @@
   "scripts": {
     "test": "npx ava"
   },
+  "private": false,
   "license": "Apache-2.0",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/kessler"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kessler/node-assist.git"
@@ -25,6 +23,7 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^11.0.0",
+    "debug": "^4.3.4",
     "inquirer": "^9.2.7",
     "openai": "^3.3.0",
     "rc": "^1.2.8"

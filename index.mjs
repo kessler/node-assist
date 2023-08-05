@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander'
+import debug from 'debug'
+import { program } from 'commander'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import config, { configFileExists, saveConfig } from './lib/config.mjs'
@@ -8,16 +9,17 @@ import inquirer from 'inquirer'
 import { createApi } from './lib/openai.mjs'
 import chalk from 'chalk'
 
+const d = debug('kessler:assist')
+
 async function main() {
   const { version } = JSON.parse(await fs.readFile(path.join(new URL('.', import.meta.url).pathname, './package.json')))
-  const program = new Command()
-
+  
   program
     .name('kes')
     .description('kessler AI assistant (@kessler/assist)')
     .version(version)
     .option('-a, --actor [actor]', 'send a role:system message with a predefined prompt')
-    .option('-p, --preprompt <prePrompt>', 'prepend some text to the beginning of the conversation, this is useful with kes query where content is coming from stdin. When combined with --actor, preprompt will immediately follow the role system message (actor prompt)')
+    .option('-p, --preprompt <preprompt>', 'prepend some text to the beginning of the conversation, this is useful with kes query where content is coming from stdin. When combined with --actor, preprompt will immediately follow the role system message (actor prompt)')
     .action(wrapCommand(genericQueryCommandInteractive))
 
   program
@@ -26,9 +28,9 @@ async function main() {
     .action(wrapCommand(genericQueryCommandOnce, { respond: printBareResponse }))
 
   program
-    .command('actor [subcommand]')
+    .command('actor [subcommand]').alias('a')
     .description('add, remove or list')
-    .action(wrapCommand(actorCommand, { respond: printBareResponse }))
+    .action(wrapCommand(actorCommand, { respond: printBareResponse, useGlobalOptions: false }))
 
   program
     .command('code [prompt]').alias('c')
@@ -45,16 +47,21 @@ async function main() {
     .description('view and edit the local configuration, using get, set and list')
     .action(wrapCommand(configCommand))
 
-  program.parse()
+  await program.parseAsync()
 }
 
 main()
 
-function wrapCommand(commandFunction, { respond = printResponse, checkInit = checkInitialized } = {}) {
+function wrapCommand(commandFunction, { respond = printResponse, checkInit = checkInitialized, useGlobalOptions = true } = {}) {
   return async (param, options, command) => {
+    
     if (command === undefined) {
       command = options
       options = param
+    }
+
+    if (useGlobalOptions) {
+      options = command.optsWithGlobals()
     }
 
     checkInit()
@@ -66,9 +73,13 @@ function wrapCommand(commandFunction, { respond = printResponse, checkInit = che
     }
 
     const preprompt = options.preprompt
+
     if (preprompt) {
       context.push({ role: 'user', content: preprompt })
     }
+
+    d('options: %o', options)
+    d('param: %o', param)
 
     return commandFunction(param, options, command, { openai, respond, prompt: showPrompt, context })
   }
@@ -107,7 +118,7 @@ async function genericQueryCommandOnce(content, options, command, { openai, resp
   context.push({ role: 'user', content })
 
   const response = await openai.chat(...context)
-  
+  d(context)
   respond(openai.toText(response))
 }
 
@@ -124,7 +135,7 @@ async function codeQueryCommand(str, options, command, { openai, respond, prompt
     }
   }
 
-  const response = await openai.chat([...context, {
+  const response = await openai.chat(...[...context, {
     role: 'system',
     content: 'when asked to write code, you will reply with code only in pure textual form'
   }, {
