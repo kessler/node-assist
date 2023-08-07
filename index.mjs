@@ -12,14 +12,17 @@ import chalk from 'chalk'
 const d = debug('kessler:assist')
 
 async function main() {
-  const { version } = JSON.parse(await fs.readFile(path.join(new URL('.', import.meta.url).pathname, './package.json')))
-  
+  const { version } = JSON.parse(await fs.readFile(path.join(new URL('.',
+    import.meta.url).pathname, './package.json')))
+
   program
     .name('kes')
     .description('kessler AI assistant (@kessler/assist)')
     .version(version)
     .option('-a, --actor [actor]', 'send a role:system message with a predefined prompt')
     .option('-p, --preprompt <preprompt>', 'prepend some text to the beginning of the conversation, this is useful with kes query where content is coming from stdin. When combined with --actor, preprompt will immediately follow the role system message (actor prompt)')
+    .option('-t, --temperature <temperature>', 'temprature effects the consistency of the response, representing a tradeoff between coherence and creativity')
+    .option('-m, --model [model]', 'select an ai model to use, currently only openai models are supported. If you don\'t specify a value, a list of available models will be displayed for you to select from')
     .action(wrapCommand(genericQueryCommandInteractive))
 
   program
@@ -54,7 +57,7 @@ main()
 
 function wrapCommand(commandFunction, { respond = printResponse, checkInit = checkInitialized, useGlobalOptions = true } = {}) {
   return async (param, options, command) => {
-    
+
     if (command === undefined) {
       command = options
       options = param
@@ -64,16 +67,18 @@ function wrapCommand(commandFunction, { respond = printResponse, checkInit = che
       options = command.optsWithGlobals()
     }
 
+    const model = await getModel(options)
+
     checkInit()
-    const openai = createApi(config.openai)
+    const openai = createApi({ ...config.openai, temperature: options.temperature, model })
     const context = []
+
     const actor = await getActor(options)
     if (actor) {
       context.push({ role: 'system', content: actor.prompt })
     }
 
     const preprompt = options.preprompt
-
     if (preprompt) {
       context.push({ role: 'user', content: preprompt })
     }
@@ -86,7 +91,7 @@ function wrapCommand(commandFunction, { respond = printResponse, checkInit = che
 }
 
 async function genericQueryCommandInteractive(param, options, command, { openai, respond, prompt, context }) {
-  
+
   console.log('send an empty string (hit enter) to exit')
 
   let content = await prompt(chalk.green('[me]:'))
@@ -97,7 +102,7 @@ async function genericQueryCommandInteractive(param, options, command, { openai,
   while (content !== '') {
     const response = await openai.chat(...context)
     const responseText = openai.toText(response)
-    
+
     context.push({ role: 'assistant', content: responseText })
     respond(responseText)
 
@@ -111,7 +116,7 @@ async function genericQueryCommandInteractive(param, options, command, { openai,
 async function genericQueryCommandOnce(content, options, command, { openai, respond, prompt, context }) {
   if (!content) {
     console.error('no content provided, waiting for content from stdin...')
-    
+
     content = await readToEnd(process.stdin)
   }
 
@@ -154,7 +159,7 @@ async function actorCommand(subcommand, options, command, { prompt }) {
 
   if (subcommand === 'add') {
     const name = await prompt(chalk.green('actor name:'))
-    const actorPrompt = await prompt(chalk.green('actor prompt:'))  
+    const actorPrompt = await prompt(chalk.green('actor prompt:'))
     config.actors[name] = { prompt: actorPrompt, name }
 
     await saveConfig()
@@ -203,6 +208,28 @@ async function getActor(options) {
   console.log(chalk.gray(`acting as ${actor}`))
 
   return actorConfig
+}
+
+const MODELS = ['gpt-4', 'gpt-4-0613', 'gpt-4-32k', 'gpt-4-32k-0613', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-3.5-turbo-0613', 'gpt-3.5-turbo-16k-0613']
+
+async function getModel(options) {
+  if (!options.hasOwnProperty('model')) {
+    return
+  }
+
+  let model = options.model
+  if (model === true) {
+    model = await showPrompt('select model:', {
+      type: 'list',
+      choices: MODELS
+    })
+  }
+
+  if (!MODELS.includes(model)) {
+    throw new Error('invalid or unknown model')
+  }
+
+  return model
 }
 
 async function init(param, options, command, { respond, prompt }) {
