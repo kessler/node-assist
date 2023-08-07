@@ -1,6 +1,6 @@
 {
   "name": "@kessler/assist",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "A Personal AI assistant CLI tool",
   "main": "index.mjs",
   "scripts": {
