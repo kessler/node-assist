@@ -56,6 +56,25 @@ Set the temperature for this session.
 ### -m, --model
 Select a model for this session.
 
+## Embedding commands
+add, query and delete embedding.
+
+### add
+
+```
+  $ kes embedding add mycollection "The little brown fox"
+```
+
+### query
+
+```
+  $ kes e query mycollection "the little dark fox"
+  [{"similarity":0.9487346256454315,"text":"the little brown fox","metadata":{"created":1691421248707}}]
+```
+
+### del
+TBD
+
 ## Actor commands
 Manage actors. Actors will be sent as ```{ "role": "system" }``` before queries or in interactive mode.
 
