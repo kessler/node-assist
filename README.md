@@ -50,6 +50,12 @@ Set an actor for this session, See actor command
 ### -p --preprompt
 Prepend some text to the session, especially useful when ingesting content from stdin.
 
+### -t, --temperature
+Set the temperature for this session.
+
+### -m, --model
+Select a model for this session.
+
 ## Actor commands
 Manage actors. Actors will be sent as ```{ "role": "system" }``` before queries or in interactive mode.
 
