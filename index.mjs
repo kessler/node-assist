@@ -195,7 +195,7 @@ async function actorCommand(subcommand, options, command, { prompt }) {
 }
 
 async function embeddingCommand(subcommand, collectionName, text, options, command, { respond, prompt, openai }) {
-  const { add, query, delete } = await initEmbedding(openai)
+  const { add, query, del } = await initEmbedding(openai)
 
   if (text === undefined) {
     text = await prompt(chalk.green('text:'))
@@ -211,12 +211,12 @@ async function embeddingCommand(subcommand, collectionName, text, options, comma
   }
 
   if (subcommand === 'query') {
-    respond(await query(collectionName, text))
+    respond(JSON.stringify(await query(collectionName, text)))
     return
   }
 
-  if (subcommand === 'delete') {
-    await delete(collectionName, JSON.parse(text))
+  if (subcommand === 'del') {
+    await del(collectionName, JSON.parse(text))
   }
 
   throw new Error('no such sub command for command actor')
