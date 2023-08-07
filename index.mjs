@@ -8,6 +8,7 @@ import config, { configFileExists, saveConfig } from './lib/config.mjs'
 import inquirer from 'inquirer'
 import { createApi } from './lib/openai.mjs'
 import chalk from 'chalk'
+import initEmbedding from './lib/embedding.mjs'
 
 const d = debug('kessler:assist')
 
@@ -31,9 +32,19 @@ async function main() {
     .action(wrapCommand(genericQueryCommandOnce, { respond: printBareResponse }))
 
   program
-    .command('actor [subcommand]').alias('a')
+    .command('actor <subcommand>').alias('a')
     .description('add, remove or list')
     .action(wrapCommand(actorCommand, { respond: printBareResponse, useGlobalOptions: false }))
+
+  program
+    .command('embedding <subcommand> <collectionName> [text]').alias('e')
+    .description('add, remove or query embedding')
+    .action(((subcommand, collectionName, text, options, command) => 
+      embeddingCommand(subcommand, collectionName, text, options, command, { 
+        respond: printBareResponse,
+        prompt: showPrompt,
+        openai: createApi({ ...config.openai })
+      })))
 
   program
     .command('code [prompt]').alias('c')
@@ -183,6 +194,34 @@ async function actorCommand(subcommand, options, command, { prompt }) {
   throw new Error('no such sub command for command actor')
 }
 
+async function embeddingCommand(subcommand, collectionName, text, options, command, { respond, prompt, openai }) {
+  const { add, query, delete } = await initEmbedding(openai)
+
+  if (text === undefined) {
+    text = await prompt(chalk.green('text:'))
+  }
+
+  if (!text) {
+    return
+  }
+
+  if (subcommand === 'add') {
+    await add(collectionName, text, { created: Date.now() })
+    return
+  }
+
+  if (subcommand === 'query') {
+    respond(await query(collectionName, text))
+    return
+  }
+
+  if (subcommand === 'delete') {
+    await delete(collectionName, JSON.parse(text))
+  }
+
+  throw new Error('no such sub command for command actor')
+}
+
 async function getActor(options) {
   if (!options.hasOwnProperty('actor')) {
     return
@@ -250,7 +289,8 @@ async function init(param, options, command, { respond, prompt }) {
   }
 
   config.openai.key = key
-  await saveConfig()
+  const filename = await saveConfig()
+  console.log(`saved config to "${filename}"`)
 }
 
 function configCommand() {
@@ -281,6 +321,9 @@ async function openPromptWithEditor(message) {
 }
 
 function printResponse(response) {
+  if (typeof response === 'object') {
+    response = JSON.stringify(response)
+  }
   console.log(`${chalk.blue.bold('[chatgpt]')}:\n${response}`)
 }
 
